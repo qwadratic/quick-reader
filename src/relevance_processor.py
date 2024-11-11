@@ -49,6 +49,7 @@ Please follow these steps:
 
 4. The output CSV should contain additional column with topics that were matched. The column name should be "Topics".
 
+Remove line breaks from the content column.
 Don't include anything besides the resulting CSV in your response
 Remember to consider the context, tone, and content of the messages when identifying if the message matches the topic. 
 """]
@@ -85,9 +86,9 @@ Relevant message found!
 Author: <code>{row['Author']}</code>
 Timestamp: <code>{datetime.fromtimestamp(int(row['Timestamp']), tz=timezone.utc).astimezone(timezone(timedelta(hours=2))).strftime('%Y-%m-%d %H:%M:%S')}</code>
 Content:
-<tg-spoiler>
+<span class="tg-spoiler">
 {row['Content']}
-</tg-spoiler>
+</span>
 
 Topics: {row['Topics']}
 Source: {row['Source']}
@@ -98,7 +99,14 @@ Source: {row['Source']}
                     text=notification_text,
                     parse_mode=ParseMode.HTML)
                 sleep(1)
-        # session.commit()
+
+            session.query(Message) \
+                .filter_by(timestamp=row['Timestamp'], channel_name=row['Source']) \
+                .update({'is_relevant': True})
+            session.commit()
+        for message in messages:
+            message.processed = True
+        session.commit()
         
     except Exception as e:
         session.rollback()

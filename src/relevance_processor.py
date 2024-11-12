@@ -1,6 +1,5 @@
 import asyncio
-import csv
-import io
+import json
 from datetime import datetime, timedelta, timezone
 from time import sleep
 from anthropic import Anthropic
@@ -45,12 +44,12 @@ Please follow these steps:
 
 2. Analyze the content and identify if a message matches one or more topics from the list provided.
 
-3. The output should be CSV keeping only rows where the message matches one or more topics from the list provided.
+3. The output should be JSON keeping only rows where the message matches one or more topics from the list provided.
 
-4. The output CSV should contain additional column with topics that were matched. The column name should be "Topics".
+4. The output JSON should be an array of matched records with an additional property with topics that were matched. The property name should be "Topics".
 
-Remove line breaks from the content column.
-Don't include anything besides the resulting CSV in your response
+Don't include anything besides the resulting JSON in your response
+Keys in each record should be lowercase
 Remember to consider the context, tone, and content of the messages when identifying if the message matches the topic. 
 """]
     return [{"role": "user", "content": "\n".join(PROMPT)}]
@@ -79,19 +78,20 @@ async def process_messages():
             max_tokens=8192,
             messages=build_prompt(messages)
         )
-        reader = csv.DictReader(io.StringIO(response.content[0].text))
-        for row in reader:
+        result = json.loads(response.content[0].text)
+        print(result)
+        for message in result:
             notification_text = f"""
 Relevant message found!
-Author: <code>{row['Author']}</code>
-Timestamp: <code>{datetime.fromtimestamp(int(row['Timestamp']), tz=timezone.utc).astimezone(timezone(timedelta(hours=2))).strftime('%Y-%m-%d %H:%M:%S')}</code>
+Author: <code>{message['author']}</code>
+Timestamp: <code>{datetime.fromtimestamp(int(message['timestamp']), tz=timezone.utc).astimezone(timezone(timedelta(hours=2))).strftime('%Y-%m-%d %H:%M:%S')}</code>
 Content:
 <span class="tg-spoiler">
-{row['Content']}
+{message['content']}
 </span>
 
-Topics: {row['Topics']}
-Source: {row['Source']}
+Topics: {', '.join(message['topics'])}
+Source: {message['source']}
 """
             async with bot:
                 await bot.send_message(
@@ -101,7 +101,7 @@ Source: {row['Source']}
                 sleep(1)
 
             session.query(Message) \
-                .filter_by(timestamp=row['Timestamp'], channel_name=row['Source']) \
+                .filter_by(timestamp=message['timestamp'], channel_name=message['source']) \
                 .update({'is_relevant': True})
             session.commit()
         for message in messages:
@@ -124,5 +124,3 @@ if __name__ == '__main__':
         asyncio.get_event_loop().run_forever()
     except (KeyboardInterrupt, SystemExit):
         pass
-   
-

@@ -46,10 +46,10 @@ Please follow these steps:
 
 3. The output should be JSON keeping only rows where the message matches one or more topics from the list provided.
 
-4. The output JSON should be an array of matched records with an additional property with topics that were matched. The property name should be "Topics".
+4. The output should be a JSON array of matched records with an additional property with topics that were matched. The property name should be "Topics".
 
-Don't include anything besides the resulting JSON in your response
-Keys in each record should be lowercase
+Don't include anything besides the resulting JSON in your response.
+Keys in each record should be lowercase.
 Remember to consider the context, tone, and content of the messages when identifying if the message matches the topic. 
 """]
     return [{"role": "user", "content": "\n".join(PROMPT)}]
